@@ -156,7 +156,8 @@ try
         
         % alternate phase of the suppressor
         flip = flip .* -1;
-        delayComp = 1 + 128; % Always 1, plus 128 for filter 
+        delayComp = 1; % Always 1 
+        filtdelay = 128; % 128 for filter
         
         % Do probe only
         dropSupp = 120;
@@ -166,7 +167,9 @@ try
         vins = playCapture2(buffdata, card, 1, 0,...
             dropProbe, dropSupp, delayComp);
         if k > stim.ThrowAway
-            ProbeBuffs(k_kept,  :) = vins;
+            response = zeros(size(vins)); 
+            response(1:end-filtdelay) = vins(filtdelay+1:end); 
+            ProbeBuffs(k_kept,  :) = response;
         end
         
         WaitSecs(0.1);
@@ -179,7 +182,9 @@ try
         vins = playCapture2(buffdata, card, 1, 0,...
             dropProbe, dropSupp, delayComp);
         if k > stim.ThrowAway
-            SuppBuffs(k_kept,  :) = vins;
+            response = zeros(size(vins)); 
+            response(1:end-filtdelay) = vins(filtdelay+1:end); 
+            SuppBuffs(k_kept,  :) = response;
         end
         
         WaitSecs(0.1);
@@ -193,7 +198,9 @@ try
         vins = playCapture2(buffdata, card, 1, 0,...
             dropProbe, dropSupp, delayComp);
         if k > stim.ThrowAway
-            BothBuffs(k_kept,  :) = vins;
+            response = zeros(size(vins)); 
+            response(1:end-filtdelay) = vins(filtdelay+1:end); 
+            BothBuffs(k_kept,  :) = response;
         end
         
         WaitSecs(0.1);

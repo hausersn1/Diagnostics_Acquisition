@@ -43,6 +43,7 @@ info.researcher = visit.researcher;
 
 % Get ear info
 subj.ear = questdlg('Which ear?', 'Ear', 'L', 'R', 'R');
+earCode = subj.ear; 
 
 % Get date/time
 datetag = datestr(clock);
@@ -64,9 +65,11 @@ fname = strcat(respDir, info.measure, '_', ...
 % load stimulus parameters
 click = clickSetDefaults();
 driver = 1; % 1 or 2
+dr = string(driver);
+dr = char(dr);
 
 % Check to make sure there are EarCal files for both drivers
-calib1_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph',driver, 'ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat']; 
+calib1_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph', dr , 'ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat']; 
 
 if isempty(dir(calib1_file)) 
     fprintf('------No Ear Calibration Found -- Go run calibEar!!------\n')
@@ -108,11 +111,12 @@ try
     click.vo = vo;
     click.filt_vo = filt_vo; 
 
-    delayComp = 1 + 128; % 1 always, plus 128 for filter 
+    delayComp = 1; % 1 always
+    filtdelay = 128; % delay for 256 order filter
     odd = 1:2:click.Averages;
     even = 2:2:click.Averages;
 
-    drop = click.Attenuation;
+    drop = click.Attenuation - 30;
     dropOther = 120;
     fprintf('Starting Stimulation...\n')
     
@@ -125,8 +129,15 @@ try
     end
     
     %compute the average
+    % window for the stimulus
     vins = vins(:, (click.StimWin+1):(click.StimWin + click.RespDur)); % Remove stimulus by windowing
+    % window to handle filter delay        
+%     raw_nodelay = vins; 
+%     response = zeros(size(vins)); 
+%     response(:, 1:end-filtdelay) = vins(:, filtdelay+1:end); 
+%     vins = response; 
     
+        
     if click.doFilt
         % High pass at 200 Hz using IIR filter
         [b, a] = butter(4, 200 * 2 * 1e-3/click.SamplingRate, 'high');
@@ -167,6 +178,7 @@ try
     data.resp.allTrials = vins;
     data.resp.testDur_s = toc;
     data.calib = calib_1.calib; 
+    data.resp.raw_nodelay = raw_nodelay; 
     
     save(fname,'data');
     

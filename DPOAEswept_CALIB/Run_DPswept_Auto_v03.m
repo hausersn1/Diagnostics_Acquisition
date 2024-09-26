@@ -70,7 +70,7 @@ fname = strcat(respDir, info.measure, '_', ...
 calib1_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph1ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat']; 
 calib2_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph2ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat']; 
 
-if (isempty(dir(calib1_file)) | isempty(dir(calib2_file)))
+if (isempty(dir(calib1_file)) || isempty(dir(calib2_file)))
     fprintf('------No Ear Calibration Found -- Go run calibEar!!------\n')
     return
 else
@@ -121,7 +121,8 @@ try
     % Set attenuation
     drop_f1 = stim.drop_f1 - 30;
     drop_f2 = stim.drop_f2 - 30;
-    delayComp = 1 + 128; % Always 1, plus 128 now that it is delayed by filtering for FPL
+    delayComp = 1; % Always 1
+    filtdelay = 128; % 128 now that it is delayed by filtering for FPL
     
     % Live analysis parameters
     windowdur = stim.windowdur;
@@ -169,10 +170,12 @@ try
         %Start playing from the buffer:
         vins = playCapture2(buffdata, card, 1, 0,...
             drop_f1, drop_f2, delayComp);
-        
+
         % save the response
         if k > stim.ThrowAway
-            resp(k - stim.ThrowAway,  :) = vins;
+            response = zeros(size(vins)); 
+            response(1:end-filtdelay) = vins(filtdelay+1:end); 
+            resp(k - stim.ThrowAway,  :) = response; 
         end
         
         WaitSecs(0.15);

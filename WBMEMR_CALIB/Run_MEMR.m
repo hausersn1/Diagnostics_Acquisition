@@ -8,8 +8,6 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% ADJUST FOR FILTER DELAY??? NOT IN THERE RIGHT NOW !
-
 clear all;
 clc;
 
@@ -51,7 +49,7 @@ datetag(strfind(datetag,' ')) = '_';
 datetag(strfind(datetag,':')) = '-';
 
 % Make directory to save results
-paraDir = 'C:\Experiments\Sam\WBMEMR\Results\';
+paraDir = 'C:\Experiments\Sam\WBMEMR_CALIB\Results\';
 respDir = strcat(paraDir,filesep,visit.subj.ID,filesep);
 addpath(genpath(paraDir));
 if(~exist(respDir,'dir'))
@@ -62,7 +60,7 @@ end
 calib1_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph1ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat'];
 calib2_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph2ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat'];
 
-if (isempty(dir(calib1_file)) | isempty(dir(calib2_file)))
+if (isempty(dir(calib1_file)) || isempty(dir(calib2_file)))
     fprintf('------No Ear Calibration Found -- Go run calibEar!!------\n')
     return
 else
@@ -71,7 +69,7 @@ else
     get_calib_2 = uigetfile(calib2_file, 'Get Driver 2 calib file');
     calib_1 = load(get_calib_1);
     calib_2 = load(get_calib_2);
-
+    
     % generate each filter
     h1 = flatFPLfilter(calib_1.calib);
     h2 = flatFPLfilter(calib_2.calib);
@@ -107,6 +105,7 @@ tic;
 %Set the delay of the sound
 invoke(RZ, 'SetTagVal', 'onsetdel',0); % onset delay is in ms
 playrecTrigger = 1;
+filtdelay = 128; 
 
 %% Set attenuation and play
 resplength = numel(stim.t);
@@ -149,7 +148,10 @@ for L = 1:stim.nLevels
                 'F32','F64',1);
             %Accumluate the time waveform - no artifact rejection
             if (n > stim.ThrowAway)
-                resp(L, n-stim.ThrowAway, k, :) = vin;
+%                 response = zeros(size(vin));
+%                 response(1:end-filtdelay) = vin(filtdelay+1:end);
+%                 resp(L, n-stim.ThrowAway, k, :) = response;
+                resp(L, n-stim.ThrowAway, k, :) = vin; 
             end
 
             % Get ready for next trial
@@ -243,6 +245,9 @@ for L = 1:stim.nLevels
                 'F32','F64',1);
             %Accumluate the time waveform - no artifact rejection
             if (n > stim.ThrowAway)
+%                 response = zeros(size(vin));
+%                 response(1:end-filtdelay) = vin(filtdelay+1:end);
+%                 resp(L, n-stim.ThrowAway, k, :) = response;
                 resp(L, n-stim.ThrowAway, k, :) = vin;
             end
 
