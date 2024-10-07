@@ -21,6 +21,7 @@ info.version = 'Auto_v02';
 % v01 - original version
 % v02 - correctly applies FPL ear calibration
 
+
 % Visit info
 if exist('C:\Experiments\Sam\current_visit.mat','file')
     load('C:\Experiments\Sam\current_visit.mat', 'visit')
@@ -67,15 +68,18 @@ fname = strcat(respDir, info.measure, '_', ...
 calib1_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph1ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat']; 
 calib2_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph2ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat']; 
 
-if (isempty(dir(calib1_file)) | isempty(dir(calib2_file)))
+if (isempty(dir(calib1_file)) || isempty(dir(calib2_file)))
     fprintf('------No Ear Calibration Found -- Go run calibEar!!------\n')
     return
 else
     % load the calibration files in
+    addpath(['C:\Experiments\FPLclick\EARCAL\' subj.ID])
     get_calib_1 = uigetfile(calib1_file, 'Get Driver 1 calib file');
     get_calib_2 = uigetfile(calib2_file, 'Get Driver 2 calib file');
     calib_1 = load(get_calib_1);
     calib_2 = load(get_calib_2);
+    rmpath(['C:\Experiments\FPLclick\EARCAL\' subj.ID])
+
 end
 
 %% Run Test
@@ -137,6 +141,7 @@ try
     BothBuffs = zeros(maxTrials, numel(stim.yProbe));
     flip = -1;
 
+    scaledB = 10; 
     % generate each filter 
     h1 = flatFPLfilter(calib_1.calib); 
     h2 = flatFPLfilter(calib_2.calib); 
@@ -147,8 +152,12 @@ try
     
     % Filter the stimulus and drop by 30 dB to prevent clipping (will
     % adjust in attenuation (i.e. drop_f1 and drop_f2)
-    filt_yProbe = filter(h1, 1, stim.yProbe) * db2mag(FPL1k_1) * db2mag(-30); 
-    filt_ySupp = filter(h2, 1, stim.ySupp)* db2mag(FPL1k_2) * db2mag(-30); 
+    filt_yProbe = filter(h1, 1, stim.yProbe) * db2mag(FPL1k_1) * db2mag(94-FPL1k_1)* db2mag(-scaledB); 
+    filt_ySupp = filter(h2, 1, stim.ySupp)* db2mag(FPL1k_2) * db2mag(94-FPL1k_2) * db2mag(-scaledB); 
+    
+    if (stim.drop_Probe - scaledB < 0 || stim.drop_Supp < 0) 
+        error('What did you do? Trying to attenuate more than is possible!')
+    end
     
     while doneWithTrials == 0
         k = k+1;
@@ -161,7 +170,7 @@ try
         
         % Do probe only
         dropSupp = 120;
-        dropProbe = stim.drop_Probe - 30;
+        dropProbe = stim.drop_Probe - scaledB;
         buffdata = zeros(2, numel(filt_yProbe));
         buffdata(1, :) = filt_yProbe;
         vins = playCapture2(buffdata, card, 1, 0,...
@@ -176,7 +185,7 @@ try
         
         % Do suppressor only
         dropProbe = 120;
-        dropSupp = stim.drop_Supp - 30;
+        dropSupp = stim.drop_Supp - scaledB;
         buffdata = zeros(2, numel(filt_ySupp));
         buffdata(2, :) = flip.*filt_ySupp;
         vins = playCapture2(buffdata, card, 1, 0,...
@@ -190,8 +199,8 @@ try
         WaitSecs(0.1);
         
         % Do both
-        dropProbe = stim.drop_Probe - 30;
-        dropSupp = stim.drop_Supp - 30;
+        dropProbe = stim.drop_Probe - scaledB;
+        dropSupp = stim.drop_Supp - scaledB;
         buffdata = zeros(2, numel(filt_yProbe));
         buffdata(1, :) = filt_yProbe;
         buffdata(2, :) = flip.*filt_ySupp;
@@ -276,7 +285,7 @@ try
             
             noisy_trials = 0;
             % artifact check
-            if k_kept >= stim.minTrials
+            if k_kept >= 3
                 std_oae = std(oae_trials,1);
                 for r = 1:k_kept
                     for q = 1:npoints

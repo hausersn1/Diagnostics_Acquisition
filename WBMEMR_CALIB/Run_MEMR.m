@@ -65,10 +65,12 @@ if (isempty(dir(calib1_file)) || isempty(dir(calib2_file)))
     return
 else
     % load the calibration files in
+    addpath(['C:\Experiments\FPLclick\EARCAL\' subj.ID])
     get_calib_1 = uigetfile(calib1_file, 'Get Driver 1 calib file');
     get_calib_2 = uigetfile(calib2_file, 'Get Driver 2 calib file');
     calib_1 = load(get_calib_1);
     calib_2 = load(get_calib_2);
+    rmpath(['C:\Experiments\FPLclick\EARCAL\' subj.ID])
     
     % generate each filter
     h1 = flatFPLfilter(calib_1.calib);
@@ -107,12 +109,13 @@ invoke(RZ, 'SetTagVal', 'onsetdel',0); % onset delay is in ms
 playrecTrigger = 1;
 filtdelay = 128; 
 
+scalingdB = 10; 
 %% Set attenuation and play
 resplength = numel(stim.t);
 resp = zeros(stim.nLevels, stim.Averages, stim.nreps, resplength);
 for L = 1:stim.nLevels
-    invoke(RZ, 'SetTagVal', 'attA', stim.clickatt - 30);
-    invoke(RZ, 'SetTagVal', 'attB', stim.noiseatt(L)-30);
+    invoke(RZ, 'SetTagVal', 'attA', (stim.clickatt - scalingdB - 20));
+    invoke(RZ, 'SetTagVal', 'attB', (stim.noiseatt(L) - scalingdB));
     invoke(RZ, 'SetTagVal', 'nsamps', resplength);
 
     for n = 1: (stim.Averages + stim.ThrowAway)
@@ -124,8 +127,8 @@ for L = 1:stim.nLevels
 
         % Filter the stimulus and drop by 30 dB to prevent clipping (will
         % adjust in attenuation (i.e. drop_f1 and drop_f2)
-        buffdataL = filter(h1, 1, buffdataL_raw) * db2mag(FPL1k_1) * db2mag(-30);
-        buffdataR = filter(h2, 1, buffdataR_raw)* db2mag(FPL1k_2) * db2mag(-30);
+        buffdataL = filter(h1, 1, buffdataL_raw) * db2mag(FPL1k_1)* db2mag(94-FPL1k_1) * db2mag(-(scalingdB+20));
+        buffdataR = filter(h2, 1, buffdataR_raw)* db2mag(FPL1k_2) * db2mag(94-FPL1k_2) *db2mag(-1*scalingdB);
 
         % Check for clipping and load to buffer
         if(any(abs(buffdataL(:)) > 1) || any(abs(buffdataR(:)) > 1))
@@ -208,8 +211,8 @@ playrecTrigger = 1;
 resplength = numel(stim.t);
 resp = zeros(stim.nLevels, stim.Averages, stim.nreps, resplength);
 for L = 1:stim.nLevels
-    invoke(RZ, 'SetTagVal', 'attA', stim.clickatt-30);
-    invoke(RZ, 'SetTagVal', 'attB', stim.noiseatt(L)-30);
+    invoke(RZ, 'SetTagVal', 'attA', stim.clickatt-scalingdB-20);
+    invoke(RZ, 'SetTagVal', 'attB', stim.noiseatt(L)-scalingdB);
     invoke(RZ, 'SetTagVal', 'nsamps', resplength);
 
     for n = 1: (stim.Averages + stim.ThrowAway)
@@ -221,8 +224,8 @@ for L = 1:stim.nLevels
 
         % Filter the stimulus and drop by 30 dB to prevent clipping (will
         % adjust in attenuation (i.e. drop_f1 and drop_f2)
-        buffdataL = filter(h1, 1, buffdataL_raw) * db2mag(FPL1k_1) * db2mag(-30);
-        buffdataR = filter(h2, 1, buffdataR_raw)* db2mag(FPL1k_2) * db2mag(-30);
+        buffdataL = filter(h1, 1, buffdataL_raw) * db2mag(FPL1k_1) * db2mag(94-FPL1k_1)* db2mag(-(scalingdB+20));
+        buffdataR = filter(h2, 1, buffdataR_raw)* db2mag(FPL1k_2) * db2mag(94-FPL1k_2)* db2mag(-scalingdB);
 
         % Check for clipping and load to buffer
         if(any(abs(buffdataL(:)) > 1) || any(abs(buffdataR(:)) > 1))

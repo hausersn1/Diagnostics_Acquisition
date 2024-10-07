@@ -173,7 +173,7 @@ noise_complex = mean(noise,2);
 VtoSPL = stim.VoltageToPascal.* stim.PascalToLinearSPL;
 
 %% Plot resulting figure
-figure;
+figure(3); hold on; 
 plot(testfreq/1000, db(abs(oae_complex).*VtoSPL), 'linew', 2,'Color', [0.4940 0.1840 0.5560]);
 hold on;
 plot(testfreq/1000, db(abs(noise_complex).*VtoSPL), '--', 'linew', 2, 'Color', [0.6350 0.0780 0.1840]);

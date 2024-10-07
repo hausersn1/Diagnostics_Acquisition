@@ -31,6 +31,6 @@ A = 1./calib.Pfor;
 f = calib.freq *2 / (calib.SamplingRate*1000);
 % win = dpss(nfilt + 1, 1, 1);
 % win = win/max(win);
-h = fir2(nfilt, f, A, blackman(nfilt+1)) ; % / card2volts;
+h = fir2(nfilt, f, A, blackman(nfilt+1)) / card2volts;
 
 
