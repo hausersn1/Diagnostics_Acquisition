@@ -76,9 +76,14 @@ if isempty(dir(calib1_file))
     return
 else
     % load the calibration files in
+    addpath(['C:\Experiments\FPLclick\EARCAL\' subj.ID])
     get_calib_1 = uigetfile(calib1_file, 'Get Calib file');
     calib_1 = load(get_calib_1);
+    rmpath(['C:\Experiments\FPLclick\EARCAL\' subj.ID])
 end
+
+scaledB = 10; 
+   
 
 tic; 
 try
@@ -104,7 +109,7 @@ try
     
     % Filter the stimulus and drop by 30 dB to prevent clipping (will
     % adjust in attenuation (i.e. drop_f1 and drop_f2)
-    filt_vo = filter(h1, 1, vo) * db2mag(FPL1k_1) * db2mag(-30);     
+    filt_vo = filter(h1, 1, vo) * db2mag(FPL1k_1) * db2mag(94-FPL1k_1) * db2mag(-scaledB);     
     
     buffdata = zeros(2, numel(filt_vo));
     buffdata(driver, :) = filt_vo; % The other source plays nothing
@@ -116,7 +121,7 @@ try
     odd = 1:2:click.Averages;
     even = 2:2:click.Averages;
 
-    drop = click.Attenuation - 30;
+    drop = click.Attenuation - scaledB;
     dropOther = 120;
     fprintf('Starting Stimulation...\n')
     
@@ -132,10 +137,10 @@ try
     % window for the stimulus
     vins = vins(:, (click.StimWin+1):(click.StimWin + click.RespDur)); % Remove stimulus by windowing
     % window to handle filter delay        
-%     raw_nodelay = vins; 
-%     response = zeros(size(vins)); 
-%     response(:, 1:end-filtdelay) = vins(:, filtdelay+1:end); 
-%     vins = response; 
+    raw_nodelay = vins; 
+    response = zeros(size(raw_nodelay)); 
+    response(:, 1:end-filtdelay) = vins(:, filtdelay+1:end); 
+    vins = response; 
     
         
     if click.doFilt
@@ -178,7 +183,7 @@ try
     data.resp.allTrials = vins;
     data.resp.testDur_s = toc;
     data.calib = calib_1.calib; 
-    data.resp.raw_nodelay = raw_nodelay; 
+    %data.resp.raw_nodelay = raw_nodelay; 
     
     save(fname,'data');
     

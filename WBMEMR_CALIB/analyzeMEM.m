@@ -1,6 +1,6 @@
-clear;
-close all;
-clc;
+% clear;
+% close all;
+% clc;
 
 [FileName,PathName,FilterIndex] = uigetfile(strcat('*MEMR_*.mat'),...
     'Please pick MEM data file to analyze');
@@ -60,7 +60,7 @@ cols = [103,0,31;
     33,102,172;
     5,48,97];
 cols = cols(end:-1:1, :)/255;
-
+figure; 
 % cols = jet(size(MEM, 1));
 axes('NextPlot','replacechildren', 'ColorOrder',cols);
 semilogx(freq / 1e3, MEM, 'linew', 2);

@@ -9,8 +9,8 @@
 %
 % References:
 %   SNR based endpoint: Abdala, C., Luo, P. & Shera, C.A. Characterizing
-%       the Relationship Between Reflection and Distortion Otoacoustic 
-%       Emissions in Normal-Hearing Adults. JARO 23, 647-664 (2022). 
+%       the Relationship Between Reflection and Distortion Otoacoustic
+%       Emissions in Normal-Hearing Adults. JARO 23, 647-664 (2022).
 %       https://doi.org/10.1007/s10162-022-00857-z
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -20,7 +20,7 @@
 info.measure = 'DPOAEswept';
 info.version = 'Auto_v03';
 
-% Version history 
+% Version history
 % v01 - first iteration
 % v02 - running for most subjects, no calib applied, expired 9/24/24
 % v03 - has calibration, started 4:30 pm 9/24/24
@@ -47,7 +47,7 @@ info.researcher = visit.researcher;
 
 % Get ear info
 subj.ear = questdlg('Which ear?', 'Ear', 'L', 'R', 'R');
-earCode = subj.ear; 
+earCode = subj.ear;
 
 % Get date/time
 datetag = datestr(clock);
@@ -67,20 +67,24 @@ fname = strcat(respDir, info.measure, '_', ...
     subj.ID, '_', subj.ear, '_', datetag, '.mat');
 
 % Check to make sure there are EarCal files for both drivers
-calib1_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph1ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat']; 
-calib2_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph2ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat']; 
+calib1_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph1ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat'];
+calib2_file = ['C:\Experiments\FPLclick\EARCAL\', subj.ID, '\', 'Calib_Ph2ER-10X_', subj.ID, earCode,'Ear_', info.date(1:11), '*.mat'];
 
 if (isempty(dir(calib1_file)) || isempty(dir(calib2_file)))
     fprintf('------No Ear Calibration Found -- Go run calibEar!!------\n')
     return
 else
     % load the calibration files in
+    addpath(['C:\Experiments\FPLclick\EARCAL\' subj.ID])
     get_calib_1 = uigetfile(calib1_file, 'Get Driver 1 calib file');
     get_calib_2 = uigetfile(calib2_file, 'Get Driver 2 calib file');
     calib_1 = load(get_calib_1);
     calib_2 = load(get_calib_2);
+    rmpath(['C:\Experiments\FPLclick\EARCAL\' subj.ID])
+    
 end
 
+scaledB = 10;
 %% Run Test
 tic;
 
@@ -90,27 +94,27 @@ try
     initializeER10X;
     
     % Initializing TDT and specify path to cardAPI here
-    pcard = genpath('C:\Experiments\cardAPI\'); 
+    pcard = genpath('C:\Experiments\cardAPI\');
     addpath(pcard)
     card = initializeCard;
     
     % Get stimulus structure
-    stim = Make_DPswept; 
+    stim = Make_DPswept;
     
-    % generate each filter 
-    h1 = flatFPLfilter(calib_1.calib); 
-    h2 = flatFPLfilter(calib_2.calib); 
+    % generate each filter
+    h1 = flatFPLfilter(calib_1.calib);
+    h2 = flatFPLfilter(calib_2.calib);
     
     % get the fplh value (FPL1k) at 1000 hZ for each calib file
-    FPL1k_1 = interp1(calib_1.calib.freq, db(abs(calib_1.calib.Pfor)), 1000); 
-    FPL1k_2 = interp1(calib_2.calib.freq, db(abs(calib_2.calib.Pfor)), 1000); 
+    FPL1k_1 = interp1(calib_1.calib.freq, db(abs(calib_1.calib.Pfor)), 1000);
+    FPL1k_2 = interp1(calib_2.calib.freq, db(abs(calib_2.calib.Pfor)), 1000);
     
     % Filter the stimulus and drop by 30 dB to prevent clipping (will
     % adjust in attenuation (i.e. drop_f1 and drop_f2)
-    filt_y1 = filter(h1, 1, stim.y1) * db2mag(FPL1k_1) * db2mag(-30); 
-    filt_y2 = filter(h2, 1, stim.y2)* db2mag(FPL1k_2) * db2mag(-30); 
+    filt_y1 = filter(h1, 1, stim.y1) * db2mag(FPL1k_1) * db2mag(94-FPL1k_1) * db2mag(-scaledB);
+    filt_y2 = filter(h2, 1, stim.y2)* db2mag(FPL1k_2) * db2mag(94-FPL1k_2) * db2mag(-scaledB);
     
-     % Set stims in buffdata:
+    % Set stims in buffdata:
     buffdata = [filt_y1; filt_y2];
     
     % Check for clipping and load to buffer
@@ -119,8 +123,12 @@ try
     end
     
     % Set attenuation
-    drop_f1 = stim.drop_f1 - 30;
-    drop_f2 = stim.drop_f2 - 30;
+    drop_f1 = stim.drop_f1 - scaledB;
+    drop_f2 = stim.drop_f2 - scaledB;
+    
+    if (drop_f1 < 0 || drop_f2 < 0)
+        error('What did you do? Attn is less than 0')
+    end
     delayComp = 1; % Always 1
     filtdelay = 128; % 128 now that it is delayed by filtering for FPL
     
@@ -132,7 +140,7 @@ try
     
     phi_dp_inst = (2.*stim.phi1_inst - stim.phi2_inst) * 2 * pi; %dp
     t = stim.t;
-    npoints = stim.npoints; 
+    npoints = stim.npoints;
     nearfreqs = stim.nearfreqs;
     VtoSPL = stim.VoltageToPascal .* stim.PascalToLinearSPL;
     
@@ -148,8 +156,8 @@ try
         f_end = stim.fmax;
     end
     
-    testfreq = 2 .^ linspace(log2(f_start), log2(f_end), npoints); 
-        
+    testfreq = 2 .^ linspace(log2(f_start), log2(f_end), npoints);
+    
     if strcmp(stim.scale, 'log')
         t_freq = log2(testfreq/f_start)/stim.speed + stim.buffdur;
     else
@@ -170,12 +178,12 @@ try
         %Start playing from the buffer:
         vins = playCapture2(buffdata, card, 1, 0,...
             drop_f1, drop_f2, delayComp);
-
+        
         % save the response
         if k > stim.ThrowAway
-            response = zeros(size(vins)); 
-            response(1:end-filtdelay) = vins(filtdelay+1:end); 
-            resp(k - stim.ThrowAway,  :) = response; 
+            response = zeros(size(vins));
+            response(1:end-filtdelay) = vins(filtdelay+1:end);
+            resp(k - stim.ThrowAway,  :) = response;
         end
         
         WaitSecs(0.15);
@@ -211,16 +219,16 @@ try
             % calculate amplitudes
             oae_trials(k_kept,:) = abs(complex(coeffs_resp(:, 1),  coeffs_resp(:, 2)));
             median_oae = median(oae_trials,1);
-            dpoae_full = db(median_oae.*VtoSPL); 
+            dpoae_full = db(median_oae.*VtoSPL);
             
             noise_trial = zeros(npoints,4);
             for i = 1:2:8
                 noise_trial(:,ceil(i/2)) = complex(coeffs_noise(:,i), coeffs_noise(:,i+1));
             end
             noise_trials(k_kept,:) = abs(mean(noise_trial, 2));
-            median_noise = median(noise_trials,1); 
-            dpnf_full = db(median_noise.*VtoSPL); 
-        
+            median_noise = median(noise_trials,1);
+            dpnf_full = db(median_noise.*VtoSPL);
+            
             dpoae = zeros(length(centerFreqs),1);
             dpnf = zeros(length(centerFreqs),1);
             dpoae_w = zeros(length(centerFreqs),1);
@@ -229,7 +237,7 @@ try
             % weighted average around 9 center frequencies
             for z = 1:length(centerFreqs)
                 band = find( testfreq >= bandEdges(z) & testfreq < bandEdges(z+1));
-          
+                
                 % TO DO: NF from which SNR was calculated included median of 7 points
                 % nearest the target frequency.
                 SNR = dpoae_full(band) - dpnf_full(band);
@@ -248,7 +256,7 @@ try
             
             noisy_trials = 0;
             % artifact check
-            if k_kept >= stim.minTrials
+            if k_kept >= 3
                 std_oae = std(oae_trials,1);
                 for r = 1:k_kept
                     for q = 1:npoints
@@ -306,9 +314,9 @@ try
     data.resp.trialsCollected = k_kept;
     data.resp.AllBuffs = resp(1:k_kept,:);
     data.resp.testDur_s = toc;
-    data.resp.noisyTrials = noisy_trials; 
+    data.resp.noisyTrials = noisy_trials;
     data.calib.Ph1 = calib_1.calib;
-    data.calib.Ph2 = calib_2.calib; 
+    data.calib.Ph2 = calib_2.calib;
     
     save(fname,'data');
     
@@ -318,9 +326,9 @@ try
     rmpath(pcard);
     
     %% Quick Analysis
-    analyze = questdlg('Do you want to see the analysis?', 'Analysis?', 'Yes', 'No', 'No'); 
+    analyze = questdlg('Do you want to see the analysis?', 'Analysis?', 'Yes', 'No', 'No');
     if strcmp(analyze, 'Yes')
-        Analyze_DPswept; 
+        Analyze_DPswept;
     end
     
 catch me
